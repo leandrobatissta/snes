@@ -12,18 +12,19 @@
       background: #111;
       color: #eee;
       font: 15px/1.5 system-ui;
+      text-align:center;
     }
     header,footer { padding:12px 16px; background:#222 }
     .wrap { max-width:980px; margin:0 auto; padding:16px }
     .toolbar { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px }
     button,input[type=file] {
       background:#444; border:1px solid #666; color:#eee;
-      padding:10px 14px; border-radius:6px; cursor:pointer; font-size:14px
+      padding:10px 14px; border-radius:6px; cursor:pointer; font-size:16px
     }
     button:hover { background:#555 }
     #gameHost {
       width: 100vw;
-      height: calc(100vh - 140px); /* espaço para botões */
+      height: calc(100vh - 160px);
       max-width: 100%;
       margin: 0 auto;
       background:#000;
@@ -32,7 +33,10 @@
       border:1px solid #333;
     }
     #game { width:100%; height:100% }
-    .info { margin-top:20px; background:#1a1a1a; padding:12px; border-radius:8px }
+    #playBtn {
+      font-size:20px; padding:14px 28px; margin:20px auto; display:none;
+    }
+    .info { margin-top:20px; background:#1a1a1a; padding:12px; border-radius:8px; text-align:left }
     code { background:#333; padding:2px 5px; border-radius:4px }
     @media (max-width:768px){
       .toolbar{flex-direction:column}
@@ -46,6 +50,8 @@
   </header>
 
   <main class="wrap">
+    <button id="playBtn">▶️ Jogar em Tela Cheia</button>
+
     <div class="toolbar">
       <label>
         <input id="romInput" type="file" accept=".smc,.sfc,.zip,.7z" />
@@ -71,8 +77,8 @@
         <li>Start: <code>Enter</code> &nbsp; Select: <code>Shift direito</code></li>
         <li>Atalhos: <code>F</code> (tela cheia), <code>P</code> (pausar)</li>
       </ul>
-      <p>📱 No celular aparece controle virtual (toque).  
-      ⚠️ Se existir <code>default.state</code> na pasta, ele é carregado automaticamente.</p>
+      <p>📱 No celular aparecem controles virtuais (toque).  
+      ⚠️ Se existir <code>default.state</code>, ele é carregado automaticamente.</p>
     </div>
   </main>
 
@@ -85,7 +91,7 @@
     window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
     window.EJS_gameUrl = "smw.sfc";
     window.EJS_gameName = "Super Mario World";
-    window.EJS_mobileControls = true; // ✅ ativa controles touch
+    window.EJS_mobileControls = true;
 
     const LS_KEY = "snes_web_slot0_state";
 
@@ -94,14 +100,21 @@
       s.src = "https://cdn.emulatorjs.org/stable/data/loader.js";
       document.body.appendChild(s);
     }
-    startEmu();
 
-    // Alerta para celular em modo retrato
+    // Mostra botão Jogar em tela cheia no celular
     if(window.innerHeight > window.innerWidth){
-      alert("📱 Dica: gire o celular para horizontal para jogar melhor!");
+      document.getElementById("playBtn").style.display = "block";
     }
+    document.getElementById("playBtn").onclick = async () => {
+      const host = document.getElementById("gameHost");
+      if (host.requestFullscreen) await host.requestFullscreen();
+      else if (host.webkitRequestFullscreen) await host.webkitRequestFullscreen(); // iOS Safari
+      startEmu();
+      setTimeout(loadDefaultState, 3000);
+      document.getElementById("playBtn").style.display = "none";
+    };
 
-    // Helpers para base64 seguro
+    // Helpers para salvar/carregar no navegador
     function u8ToB64(u8){
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -116,35 +129,22 @@
       return arr;
     }
 
-    // Carregar default.state se existir
+    // Carregar default.state
     async function loadDefaultState(){
       try {
         const resp = await fetch("default.state", { cache: "no-store" });
-        if (!resp.ok) {
-          alert("❌ default.state não encontrado (HTTP " + resp.status + ")");
-          return;
-        }
+        if (!resp.ok) return;
         const buf = new Uint8Array(await resp.arrayBuffer());
-        if (!buf.length) {
-          alert("❌ default.state está vazio (0 bytes). Exporte um save válido.");
-          return;
-        }
+        if (!buf.length) return;
         const apply = () => {
           const gm = window.EJS_emulator?.gameManager;
           if (!gm) return setTimeout(apply, 400);
-          try {
-            gm.setState ? gm.setState(buf) : gm.loadState(buf);
-            alert("📥 Save inicial (default.state) carregado!");
-          } catch (e) {
-            alert("⚠️ Erro ao aplicar default.state. Reexporte o save.");
-          }
+          try { gm.setState ? gm.setState(buf) : gm.loadState(buf); }
+          catch (e) { console.warn("Erro default.state", e); }
         };
         apply();
-      } catch (e) {
-        alert("❌ Erro de rede ao buscar default.state. Use um servidor HTTP (ex.: python -m http.server).");
-      }
+      } catch (e) { console.warn("Erro rede default.state", e); }
     }
-    setTimeout(loadDefaultState, 4000);
 
     // Upload manual de ROM
     document.getElementById("romInput").addEventListener("change", async (ev) => {
@@ -158,7 +158,7 @@
       setTimeout(loadDefaultState, 3000);
     });
 
-    // Botões
+    // Botões básicos
     document.getElementById("btnPause").onclick = () => {
       const emu = window.EJS_emulator;
       if (!emu) return;
@@ -166,19 +166,18 @@
     };
     document.getElementById("btnFullscreen").onclick = () => {
       const host = document.getElementById("gameHost");
-      document.fullscreenElement ? document.exitFullscreen() : host.requestFullscreen().catch(()=>{});
+      if (host.requestFullscreen) host.requestFullscreen();
+      else if (host.webkitRequestFullscreen) host.webkitRequestFullscreen();
     };
 
     // Salvar no navegador
     document.getElementById("btnSave").onclick = async () => {
       const gm = window.EJS_emulator?.gameManager;
       if (!gm?.getState) return alert("Jogo não iniciado");
-      try {
-        const state = gm.getState();
-        const b64 = await u8ToB64(state);
-        localStorage.setItem(LS_KEY, b64);
-        alert("✅ Save gravado no navegador!");
-      } catch(e){ console.error(e); alert("Erro ao salvar"); }
+      const state = gm.getState();
+      const b64 = await u8ToB64(state);
+      localStorage.setItem(LS_KEY, b64);
+      alert("✅ Save gravado no navegador!");
     };
 
     // Carregar do navegador
@@ -187,27 +186,22 @@
       if (!gm) return alert("Jogo não iniciado");
       const b64 = localStorage.getItem(LS_KEY);
       if (!b64) return alert("Nenhum save encontrado no navegador");
-      try {
-        const u8 = b64ToU8(b64);
-        gm.setState ? gm.setState(u8) : gm.loadState(u8);
-        alert("📂 Save carregado do navegador!");
-      } catch(e){ console.error(e); alert("Erro ao carregar"); }
+      const u8 = b64ToU8(b64);
+      gm.setState ? gm.setState(u8) : gm.loadState(u8);
+      alert("📂 Save carregado do navegador!");
     };
 
     // Exportar/importar
     document.getElementById("btnExport").onclick = () => {
       const gm = window.EJS_emulator?.gameManager;
       if (!gm?.getState) return alert("Jogo não iniciado");
-      try {
-        const state = gm.getState();
-        const blob = new Blob([state], {type:"application/octet-stream"});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = (window.EJS_gameName || "snes") + ".state";
-        a.click(); URL.revokeObjectURL(url);
-      } catch(e){ alert("Erro ao exportar"); }
+      const state = gm.getState();
+      const blob = new Blob([state], {type:"application/octet-stream"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = (window.EJS_gameName || "snes") + ".state";
+      a.click(); URL.revokeObjectURL(url);
     };
-
     document.getElementById("btnImport").onclick = () =>
       document.getElementById("stateInput").click();
     document.getElementById("stateInput").addEventListener("change", async (ev) => {
@@ -215,10 +209,7 @@
       if (!file) return;
       const buf = new Uint8Array(await file.arrayBuffer());
       const gm = window.EJS_emulator?.gameManager;
-      try {
-        gm.setState ? gm.setState(buf) : gm.loadState(buf);
-        alert("📥 Save importado");
-      } catch(e){ alert("Erro ao importar"); }
+      gm.setState ? gm.setState(buf) : gm.loadState(buf);
     });
   </script>
 </body>
