@@ -2,24 +2,23 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
-  <title>SNES Web – Emulador com Save/Load</title>
+  <title>SNES Web – Super Mario World</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --bg:#111; --fg:#eee; --accent:#1AAFFF; }
-    body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
+    body{margin:0;background:#111;color:#eee;font:14px/1.4 system-ui}
     header,footer{padding:12px 16px}
     header{border-bottom:1px solid #222}
     .wrap{max-width:980px;margin:0 auto;padding:16px}
     .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-    .row>*{margin:4px 0}
-    button,input[type=file]{background:#222;border:1px solid #333;color:var(--fg);padding:8px 12px;border-radius:8px;cursor:pointer}
-    button:hover{border-color:#444}
-    #gameHost{width:100%;max-width:960px;aspect-ratio:4/3;background:#000;margin:12px auto;border-radius:8px;overflow:hidden;border:1px solid #222}
+    button,input[type=file]{background:#222;border:1px solid #333;color:#eee;
+      padding:8px 12px;border-radius:8px;cursor:pointer}
+    button:hover{border-color:#555}
+    #gameHost{width:100%;max-width:960px;aspect-ratio:4/3;background:#000;
+      margin:12px auto;border-radius:8px;overflow:hidden;border:1px solid #222}
     #game{width:100%;height:100%}
     details{background:#0d0d0d;border:1px solid #222;border-radius:8px;padding:10px}
     summary{cursor:pointer;color:#ddd}
-    small.muted{opacity:.75}
-    .pill{display:inline-block;padding:2px 8px;border:1px solid #333;border-radius:999px;margin:2px;font-size:12px}
+    small{opacity:.7}
     .spacer{flex:1}
   </style>
 </head>
@@ -27,155 +26,133 @@
   <header class="wrap">
     <div class="row">
       <strong>SNES Web</strong>
-      <span class="pill">EmulatorJS</span>
       <span class="spacer"></span>
-      <small class="muted">Carregue sua ROM para jogar.</small>
+      <small>ROM padrão: <code>smw.sfc</code></small>
     </div>
   </header>
 
   <main class="wrap">
     <div class="row">
       <label>
-        <input id="romInput" type="file" accept=".smc,.sfc,.zip,.7z,application/octet-stream" />
+        <input id="romInput" type="file" accept=".smc,.sfc,.zip,.7z" />
         Carregar ROM…
       </label>
-      <button id="btnSave">💾 Salvar (slot local)</button>
-      <button id="btnLoad">📂 Carregar (slot local)</button>
-      <button id="btnExport">⬇️ Baixar .state</button>
-      <button id="btnImport">⬆️ Importar .state…</button>
-      <input id="stateInput" type="file" accept=".state,application/octet-stream" style="display:none" />
+      <button id="btnSave">💾 Salvar</button>
+      <button id="btnLoad">📂 Carregar</button>
+      <button id="btnExport">⬇️ Baixar Save</button>
+      <button id="btnImport">⬆️ Importar Save</button>
+      <input id="stateInput" type="file" accept=".state" style="display:none" />
       <span class="spacer"></span>
-      <button id="btnPause">⏯️ Pausar/Retomar</button>
+      <button id="btnPause">⏯️ Pausar</button>
       <button id="btnFullscreen">⛶ Tela cheia</button>
     </div>
 
     <div id="gameHost">
       <div id="game"></div>
     </div>
-
-    <details open>
-      <summary><b>Controles por teclado</b></summary>
-      <ul>
-        <li><b>Direcionais:</b> Setas</li>
-        <li><b>A / B / X / Y:</b> Z / X / A / S</li>
-        <li><b>L / R:</b> Q / W</li>
-        <li><b>START / SELECT:</b> Enter / Shift Direito</li>
-        <li><b>Outros:</b> F – Tela cheia, P – Pausar, +/- – Volume</li>
-      </ul>
-      <small class="muted">Em telas touch aparece um controle virtual. Você pode remapear teclas no menu do emulador.</small>
-    </details>
-
-    <details>
-      <summary><b>Dicas de Save/Load</b></summary>
-      <ul>
-        <li><b>Salvar (slot local)</b> → guarda no <code>localStorage</code></li>
-        <li><b>Carregar (slot local)</b> → restaura do navegador</li>
-        <li><b>Baixar .state</b> → exporta um arquivo</li>
-        <li><b>Importar .state</b> → carrega um arquivo salvo</li>
-      </ul>
-    </details>
   </main>
 
   <footer class="wrap">
-    <small class="muted">Núcleo SNES via CDN do EmulatorJS.</small>
+    <small>SNES EmulatorJS • ROM padrão: <code>smw.sfc</code> na mesma pasta</small>
   </footer>
 
   <script>
-    window.EJS_player = '#game';
-    window.EJS_core = 'snes';
-    window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
-    window.EJS_startOnLoaded = false;
-    window.EJS_gameName = 'SNES Game';
-    window.EJS_threads = true;
-    window.EJS_loadStateURL = '';
+    // Configurações do emulador
+    window.EJS_player = "#game";
+    window.EJS_core = "snes";
+    window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+    window.EJS_gameUrl = "smw.sfc";   // ROM padrão
+    window.EJS_gameName = "Super Mario World";
 
-    const LS_KEY = 'snes_web_slot0_state';
-    const LS_GAME = 'snes_web_last_game_name';
-    const msg = (t, ms=1500) => window.EJS_emulator?.displayMessage ? window.EJS_emulator.displayMessage(t, ms) : console.log('[MSG]', t);
-    const u8ToB64 = (u8) => btoa(String.fromCharCode(...u8));
-    const b64ToU8 = (b64) => new Uint8Array(atob(b64).split('').map(c=>c.charCodeAt(0)));
+    const LS_KEY = "snes_web_slot0_state";
+    const msg = (t) => console.log("[SNES]", t);
 
-    document.getElementById('romInput').addEventListener('change', async (ev) => {
+    // Inicia o emulador automaticamente
+    function startEmu(){
+      const s = document.createElement("script");
+      s.src = "https://cdn.emulatorjs.org/stable/data/loader.js";
+      document.body.appendChild(s);
+    }
+    startEmu();
+
+    // Carregar ROM manual
+    document.getElementById("romInput").addEventListener("change", async (ev) => {
       const file = ev.target.files?.[0];
       if (!file) return;
-      window.EJS_gameName = file.name.replace(/\.(smc|sfc|zip|7z)$/i,'');
-      localStorage.setItem(LS_GAME, window.EJS_gameName);
       const buf = await file.arrayBuffer();
       window.EJS_gameUrl = new Uint8Array(buf);
+      window.EJS_gameName = file.name;
       if (window.EJS_terminate) { try { window.EJS_terminate(); } catch(e){} }
       startEmu();
     });
 
-    function startEmu(){
-      const s = document.createElement('script');
-      s.src = 'https://cdn.emulatorjs.org/stable/data/loader.js';
-      document.body.appendChild(s);
-    }
-
-    document.getElementById('btnPause').onclick = () => {
+    // Pausar / Retomar
+    document.getElementById("btnPause").onclick = () => {
       const emu = window.EJS_emulator;
       if (!emu) return;
-      if (emu.isPaused()) { emu.resume(); msg('▶ Retomado'); }
-      else { emu.pause(); msg('⏸️ Pausado'); }
+      if (emu.isPaused()) { emu.resume(); msg("▶ Retomado"); }
+      else { emu.pause(); msg("⏸️ Pausado"); }
     };
-    document.getElementById('btnFullscreen').onclick = () => {
-      const host = document.getElementById('gameHost');
+
+    // Tela cheia
+    document.getElementById("btnFullscreen").onclick = () => {
+      const host = document.getElementById("gameHost");
       if (document.fullscreenElement) document.exitFullscreen();
       else host.requestFullscreen().catch(()=>{});
     };
 
-    document.getElementById('btnSave').onclick = () => {
+    // Salvar no navegador
+    document.getElementById("btnSave").onclick = () => {
       const gm = window.EJS_emulator?.gameManager;
-      if (!gm?.getState) return msg('Emulador ainda não iniciou.');
-      try{
-        const state = gm.getState();
-        localStorage.setItem(LS_KEY, u8ToB64(state));
-        msg('💾 Save gravado');
-      }catch(e){ console.error(e); msg('Falha ao salvar'); }
-    };
-
-    document.getElementById('btnLoad').onclick = async () => {
-      const gm = window.EJS_emulator?.gameManager;
-      if (!gm) return msg('Emulador ainda não iniciou.');
-      const b64 = localStorage.getItem(LS_KEY);
-      if (!b64) return msg('Nenhum save local encontrado.');
-      const u8 = b64ToU8(b64);
+      if (!gm?.getState) return msg("Jogo não iniciado.");
       try {
-        if (typeof gm.setState === 'function') gm.setState(u8);
-        else if (typeof gm.loadState === 'function') gm.loadState(u8);
-        else return msg('Core sem API de loadState disponível.');
-        msg('📂 Save carregado');
-      } catch(e){ console.error(e); msg('Falha ao carregar'); }
-    };
-
-    document.getElementById('btnExport').onclick = () => {
-      const gm = window.EJS_emulator?.gameManager;
-      if (!gm?.getState) return msg('Emulador ainda não iniciou.');
-      try{
         const state = gm.getState();
-        const blob = new Blob([state], {type:'application/octet-stream'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const name = (localStorage.getItem(LS_GAME) || 'SNES_Game') + '.state';
-        a.href = url; a.download = name; a.click();
-        URL.revokeObjectURL(url);
-        msg('⬇️ Save baixado');
-      }catch(e){ console.error(e); msg('Falha ao exportar'); }
+        localStorage.setItem(LS_KEY, btoa(String.fromCharCode(...state)));
+        msg("💾 Save gravado");
+      } catch(e){ msg("Erro ao salvar"); }
     };
 
-    document.getElementById('btnImport').onclick = () => document.getElementById('stateInput').click();
-    document.getElementById('stateInput').addEventListener('change', async (ev) => {
+    // Carregar do navegador
+    document.getElementById("btnLoad").onclick = () => {
+      const gm = window.EJS_emulator?.gameManager;
+      if (!gm) return msg("Jogo não iniciado.");
+      const b64 = localStorage.getItem(LS_KEY);
+      if (!b64) return msg("Nenhum save encontrado.");
+      const u8 = new Uint8Array(atob(b64).split("").map(c=>c.charCodeAt(0)));
+      try {
+        gm.setState ? gm.setState(u8) : gm.loadState(u8);
+        msg("📂 Save carregado");
+      } catch(e){ msg("Erro ao carregar"); }
+    };
+
+    // Exportar save (.state)
+    document.getElementById("btnExport").onclick = () => {
+      const gm = window.EJS_emulator?.gameManager;
+      if (!gm?.getState) return msg("Jogo não iniciado.");
+      try {
+        const state = gm.getState();
+        const blob = new Blob([state], {type:"application/octet-stream"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = (window.EJS_gameName || "snes") + ".state";
+        a.click(); URL.revokeObjectURL(url);
+        msg("⬇️ Save baixado");
+      } catch(e){ msg("Erro ao exportar"); }
+    };
+
+    // Importar save (.state)
+    document.getElementById("btnImport").onclick = () =>
+      document.getElementById("stateInput").click();
+
+    document.getElementById("stateInput").addEventListener("change", async (ev) => {
       const file = ev.target.files?.[0];
       if (!file) return;
-      const gm = window.EJS_emulator?.gameManager;
-      if (!gm) return msg('Emulador ainda não iniciou.');
       const buf = new Uint8Array(await file.arrayBuffer());
-      try{
-        if (typeof gm.setState === 'function') gm.setState(buf);
-        else if (typeof gm.loadState === 'function') gm.loadState(buf);
-        else return msg('Core sem API de loadState disponível.');
-        msg('📥 Save importado');
-      }catch(e){ console.error(e); msg('Falha ao importar'); }
+      const gm = window.EJS_emulator?.gameManager;
+      try {
+        gm.setState ? gm.setState(buf) : gm.loadState(buf);
+        msg("📥 Save importado");
+      } catch(e){ msg("Erro ao importar"); }
     });
   </script>
 </body>
