@@ -5,69 +5,70 @@
   <title>SNES Web – Super Mario World</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body{margin:0;background:#111;color:#eee;font:14px/1.4 system-ui}
-    header,footer{padding:12px 16px}
-    header{border-bottom:1px solid #222}
+    body{margin:0;background:#111;color:#eee;font:15px/1.5 system-ui}
+    header,footer{padding:12px 16px;background:#222}
     .wrap{max-width:980px;margin:0 auto;padding:16px}
-    .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-    button,input[type=file]{background:#222;border:1px solid #333;color:#eee;
-      padding:8px 12px;border-radius:8px;cursor:pointer}
-    button:hover{border-color:#555}
+    .toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+    button,input[type=file]{background:#444;border:1px solid #666;color:#eee;
+      padding:10px 14px;border-radius:6px;cursor:pointer;font-size:14px}
+    button:hover{background:#555}
     #gameHost{width:100%;max-width:960px;aspect-ratio:4/3;background:#000;
-      margin:12px auto;border-radius:8px;overflow:hidden;border:1px solid #222}
+      margin:12px auto;border-radius:8px;overflow:hidden;border:1px solid #333}
     #game{width:100%;height:100%}
-    details{background:#0d0d0d;border:1px solid #222;border-radius:8px;padding:10px}
-    summary{cursor:pointer;color:#ddd}
-    small{opacity:.7}
-    .spacer{flex:1}
+    .info{margin-top:20px;background:#1a1a1a;padding:12px;border-radius:8px}
+    code{background:#333;padding:2px 5px;border-radius:4px}
   </style>
 </head>
 <body>
-  <header class="wrap">
-    <div class="row">
-      <strong>SNES Web</strong>
-      <span class="spacer"></span>
-      <small>ROM padrão: <code>smw.sfc</code></small>
-    </div>
+  <header>
+    <div class="wrap"><strong>SNES Web – Super Mario World</strong></div>
   </header>
 
   <main class="wrap">
-    <div class="row">
+    <div class="toolbar">
       <label>
         <input id="romInput" type="file" accept=".smc,.sfc,.zip,.7z" />
         Carregar ROM…
       </label>
-      <button id="btnSave">💾 Salvar</button>
-      <button id="btnLoad">📂 Carregar</button>
-      <button id="btnExport">⬇️ Baixar Save</button>
+      <button id="btnSave">💾 Salvar (navegador)</button>
+      <button id="btnLoad">📂 Carregar (navegador)</button>
+      <button id="btnExport">⬇️ Exportar Save</button>
       <button id="btnImport">⬆️ Importar Save</button>
       <input id="stateInput" type="file" accept=".state" style="display:none" />
-      <span class="spacer"></span>
       <button id="btnPause">⏯️ Pausar</button>
       <button id="btnFullscreen">⛶ Tela cheia</button>
     </div>
 
-    <div id="gameHost">
-      <div id="game"></div>
+    <div id="gameHost"><div id="game"></div></div>
+
+    <div class="info">
+      <h3>🎮 Controles</h3>
+      <ul>
+        <li>Direcionais: <code>Setas</code></li>
+        <li>A / B / X / Y: <code>Z</code> / <code>X</code> / <code>A</code> / <code>S</code></li>
+        <li>L / R: <code>Q</code> / <code>W</code></li>
+        <li>Start: <code>Enter</code> &nbsp; Select: <code>Shift direito</code></li>
+        <li>Atalhos: <code>F</code> (tela cheia), <code>P</code> (pausar)</li>
+      </ul>
+      <p>⚠️ Cada usuário tem seus saves no navegador.  
+      Se existir um arquivo <code>default.state</code> no mesmo diretório, ele é carregado como save inicial.</p>
     </div>
   </main>
 
-  <footer class="wrap">
-    <small>SNES EmulatorJS • ROM padrão: <code>smw.sfc</code> na mesma pasta</small>
-  </footer>
+  <footer><div class="wrap">ROM padrão: <code>smw.sfc</code> • Save inicial: <code>default.state</code></div></footer>
 
   <script>
-    // Configurações do emulador
+    // Configuração base
     window.EJS_player = "#game";
     window.EJS_core = "snes";
     window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
-    window.EJS_gameUrl = "smw.sfc";   // ROM padrão
+    window.EJS_gameUrl = "smw.sfc";
     window.EJS_gameName = "Super Mario World";
 
     const LS_KEY = "snes_web_slot0_state";
-    const msg = (t) => console.log("[SNES]", t);
+    const log = (msg) => console.log("[SNES]", msg);
 
-    // Inicia o emulador automaticamente
+    // Inicia o emulador
     function startEmu(){
       const s = document.createElement("script");
       s.src = "https://cdn.emulatorjs.org/stable/data/loader.js";
@@ -75,7 +76,25 @@
     }
     startEmu();
 
-    // Carregar ROM manual
+    // Tenta carregar default.state automaticamente
+    async function loadDefaultState(){
+      try {
+        const resp = await fetch("default.state");
+        if (!resp.ok) return;
+        const buf = new Uint8Array(await resp.arrayBuffer());
+        const gm = window.EJS_emulator?.gameManager;
+        if (gm) {
+          setTimeout(() => {
+            try {
+              gm.setState ? gm.setState(buf) : gm.loadState(buf);
+              alert("📥 Save inicial (default.state) carregado!");
+            } catch(e){ console.warn("Erro ao aplicar default.state", e); }
+          }, 2000); // espera 2s para o emulador iniciar
+        }
+      } catch(e){ console.warn("Nenhum default.state encontrado"); }
+    }
+
+    // Upload manual de ROM
     document.getElementById("romInput").addEventListener("change", async (ev) => {
       const file = ev.target.files?.[0];
       if (!file) return;
@@ -84,51 +103,47 @@
       window.EJS_gameName = file.name;
       if (window.EJS_terminate) { try { window.EJS_terminate(); } catch(e){} }
       startEmu();
+      setTimeout(loadDefaultState, 3000);
     });
 
     // Pausar / Retomar
     document.getElementById("btnPause").onclick = () => {
       const emu = window.EJS_emulator;
       if (!emu) return;
-      if (emu.isPaused()) { emu.resume(); msg("▶ Retomado"); }
-      else { emu.pause(); msg("⏸️ Pausado"); }
+      emu.isPaused() ? (emu.resume(), log("▶ Retomado")) : (emu.pause(), log("⏸️ Pausado"));
     };
-
-    // Tela cheia
     document.getElementById("btnFullscreen").onclick = () => {
       const host = document.getElementById("gameHost");
-      if (document.fullscreenElement) document.exitFullscreen();
-      else host.requestFullscreen().catch(()=>{});
+      document.fullscreenElement ? document.exitFullscreen() : host.requestFullscreen().catch(()=>{});
     };
 
-    // Salvar no navegador
+    // Save localStorage
     document.getElementById("btnSave").onclick = () => {
       const gm = window.EJS_emulator?.gameManager;
-      if (!gm?.getState) return msg("Jogo não iniciado.");
+      if (!gm?.getState) return alert("Jogo não iniciado");
       try {
         const state = gm.getState();
         localStorage.setItem(LS_KEY, btoa(String.fromCharCode(...state)));
-        msg("💾 Save gravado");
-      } catch(e){ msg("Erro ao salvar"); }
+        alert("✅ Save gravado no navegador!");
+      } catch(e){ alert("Erro ao salvar"); }
     };
 
-    // Carregar do navegador
     document.getElementById("btnLoad").onclick = () => {
       const gm = window.EJS_emulator?.gameManager;
-      if (!gm) return msg("Jogo não iniciado.");
+      if (!gm) return alert("Jogo não iniciado");
       const b64 = localStorage.getItem(LS_KEY);
-      if (!b64) return msg("Nenhum save encontrado.");
+      if (!b64) return alert("Nenhum save encontrado no navegador");
       const u8 = new Uint8Array(atob(b64).split("").map(c=>c.charCodeAt(0)));
       try {
         gm.setState ? gm.setState(u8) : gm.loadState(u8);
-        msg("📂 Save carregado");
-      } catch(e){ msg("Erro ao carregar"); }
+        alert("📂 Save carregado do navegador!");
+      } catch(e){ alert("Erro ao carregar"); }
     };
 
-    // Exportar save (.state)
+    // Exportar/importar
     document.getElementById("btnExport").onclick = () => {
       const gm = window.EJS_emulator?.gameManager;
-      if (!gm?.getState) return msg("Jogo não iniciado.");
+      if (!gm?.getState) return alert("Jogo não iniciado");
       try {
         const state = gm.getState();
         const blob = new Blob([state], {type:"application/octet-stream"});
@@ -136,14 +151,11 @@
         const a = document.createElement("a");
         a.href = url; a.download = (window.EJS_gameName || "snes") + ".state";
         a.click(); URL.revokeObjectURL(url);
-        msg("⬇️ Save baixado");
-      } catch(e){ msg("Erro ao exportar"); }
+      } catch(e){ alert("Erro ao exportar"); }
     };
 
-    // Importar save (.state)
     document.getElementById("btnImport").onclick = () =>
       document.getElementById("stateInput").click();
-
     document.getElementById("stateInput").addEventListener("change", async (ev) => {
       const file = ev.target.files?.[0];
       if (!file) return;
@@ -151,9 +163,12 @@
       const gm = window.EJS_emulator?.gameManager;
       try {
         gm.setState ? gm.setState(buf) : gm.loadState(buf);
-        msg("📥 Save importado");
-      } catch(e){ msg("Erro ao importar"); }
+        alert("📥 Save importado");
+      } catch(e){ alert("Erro ao importar"); }
     });
+
+    // Aguarda emulador inicializar e tenta carregar o default.state
+    setTimeout(loadDefaultState, 4000);
   </script>
 </body>
 </html>
