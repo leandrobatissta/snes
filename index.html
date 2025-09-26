@@ -51,7 +51,7 @@
         <li>Atalhos: <code>F</code> (tela cheia), <code>P</code> (pausar)</li>
       </ul>
       <p>⚠️ Cada usuário tem seus saves no navegador.  
-      Se existir um arquivo <code>default.state</code> no mesmo diretório, ele é carregado como save inicial.</p>
+      Se existir um arquivo <code>default.state</code> na mesma pasta, ele será carregado automaticamente.</p>
     </div>
   </main>
 
@@ -66,9 +66,7 @@
     window.EJS_gameName = "Super Mario World";
 
     const LS_KEY = "snes_web_slot0_state";
-    const log = (msg) => console.log("[SNES]", msg);
 
-    // Inicia o emulador
     function startEmu(){
       const s = document.createElement("script");
       s.src = "https://cdn.emulatorjs.org/stable/data/loader.js";
@@ -80,7 +78,10 @@
     async function loadDefaultState(){
       try {
         const resp = await fetch("default.state");
-        if (!resp.ok) return;
+        if (!resp.ok) {
+          alert("❌ Arquivo default.state não encontrado (" + resp.status + ")");
+          return;
+        }
         const buf = new Uint8Array(await resp.arrayBuffer());
         const gm = window.EJS_emulator?.gameManager;
         if (gm) {
@@ -88,10 +89,12 @@
             try {
               gm.setState ? gm.setState(buf) : gm.loadState(buf);
               alert("📥 Save inicial (default.state) carregado!");
-            } catch(e){ console.warn("Erro ao aplicar default.state", e); }
-          }, 2000); // espera 2s para o emulador iniciar
+            } catch(e){ alert("⚠️ Erro ao aplicar default.state"); }
+          }, 2000);
         }
-      } catch(e){ console.warn("Nenhum default.state encontrado"); }
+      } catch(e){
+        alert("❌ Erro de rede ao buscar default.state");
+      }
     }
 
     // Upload manual de ROM
@@ -106,11 +109,14 @@
       setTimeout(loadDefaultState, 3000);
     });
 
-    // Pausar / Retomar
+    // Aguarda e tenta carregar default.state
+    setTimeout(loadDefaultState, 4000);
+
+    // Botões de controle
     document.getElementById("btnPause").onclick = () => {
       const emu = window.EJS_emulator;
       if (!emu) return;
-      emu.isPaused() ? (emu.resume(), log("▶ Retomado")) : (emu.pause(), log("⏸️ Pausado"));
+      emu.isPaused() ? emu.resume() : emu.pause();
     };
     document.getElementById("btnFullscreen").onclick = () => {
       const host = document.getElementById("gameHost");
@@ -166,9 +172,6 @@
         alert("📥 Save importado");
       } catch(e){ alert("Erro ao importar"); }
     });
-
-    // Aguarda emulador inicializar e tenta carregar o default.state
-    setTimeout(loadDefaultState, 4000);
   </script>
 </body>
 </html>
