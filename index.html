@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <title>SNES Web – Super Mario World</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <style>
     body{margin:0;background:#111;color:#eee;font:15px/1.5 system-ui}
     header,footer{padding:12px 16px;background:#222}
@@ -17,6 +17,11 @@
     #game{width:100%;height:100%}
     .info{margin-top:20px;background:#1a1a1a;padding:12px;border-radius:8px}
     code{background:#333;padding:2px 5px;border-radius:4px}
+    @media (max-width:768px){
+      .toolbar{flex-direction:column}
+      button,input[type=file]{width:100%}
+      #gameHost{max-width:100%}
+    }
   </style>
 </head>
 <body>
@@ -50,8 +55,8 @@
         <li>Start: <code>Enter</code> &nbsp; Select: <code>Shift direito</code></li>
         <li>Atalhos: <code>F</code> (tela cheia), <code>P</code> (pausar)</li>
       </ul>
-      <p>⚠️ Cada usuário tem seus saves no navegador.  
-      Se existir um arquivo <code>default.state</code> na mesma pasta, ele será carregado automaticamente.</p>
+      <p>📱 No celular aparece controle virtual (toque).  
+      ⚠️ Se existir <code>default.state</code> na pasta, ele é carregado automaticamente.</p>
     </div>
   </main>
 
@@ -64,6 +69,7 @@
     window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
     window.EJS_gameUrl = "smw.sfc";
     window.EJS_gameName = "Super Mario World";
+    window.EJS_mobileControls = true; // ✅ ativa controles touch
 
     const LS_KEY = "snes_web_slot0_state";
 
@@ -74,28 +80,40 @@
     }
     startEmu();
 
-    // Tenta carregar default.state automaticamente
+    // Alerta para girar o celular se estiver em retrato
+    if(window.innerHeight > window.innerWidth){
+      alert("📱 Dica: gire o celular para horizontal para jogar melhor!");
+    }
+
+    // Tenta carregar default.state
     async function loadDefaultState(){
       try {
-        const resp = await fetch("default.state");
+        const resp = await fetch("default.state", { cache: "no-store" });
         if (!resp.ok) {
-          alert("❌ Arquivo default.state não encontrado (" + resp.status + ")");
+          alert("❌ Arquivo default.state não encontrado (HTTP " + resp.status + ")");
           return;
         }
         const buf = new Uint8Array(await resp.arrayBuffer());
-        const gm = window.EJS_emulator?.gameManager;
-        if (gm) {
-          setTimeout(() => {
-            try {
-              gm.setState ? gm.setState(buf) : gm.loadState(buf);
-              alert("📥 Save inicial (default.state) carregado!");
-            } catch(e){ alert("⚠️ Erro ao aplicar default.state"); }
-          }, 2000);
+        if (!buf.length) {
+          alert("❌ default.state está vazio (0 bytes). Exporte um save válido.");
+          return;
         }
-      } catch(e){
-        alert("❌ Erro de rede ao buscar default.state");
+        const apply = () => {
+          const gm = window.EJS_emulator?.gameManager;
+          if (!gm) return setTimeout(apply, 400);
+          try {
+            gm.setState ? gm.setState(buf) : gm.loadState(buf);
+            alert("📥 Save inicial (default.state) carregado!");
+          } catch (e) {
+            alert("⚠️ Erro ao aplicar default.state. Reexporte o save.");
+          }
+        };
+        apply();
+      } catch (e) {
+        alert("❌ Erro de rede ao buscar default.state. Abra pelo servidor (python -m http.server).");
       }
     }
+    setTimeout(loadDefaultState, 4000);
 
     // Upload manual de ROM
     document.getElementById("romInput").addEventListener("change", async (ev) => {
@@ -108,9 +126,6 @@
       startEmu();
       setTimeout(loadDefaultState, 3000);
     });
-
-    // Aguarda e tenta carregar default.state
-    setTimeout(loadDefaultState, 4000);
 
     // Botões de controle
     document.getElementById("btnPause").onclick = () => {
