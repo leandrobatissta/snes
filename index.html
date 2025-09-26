@@ -3,24 +3,40 @@
 <head>
   <meta charset="utf-8" />
   <title>SNES Web – Super Mario World</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <style>
-    body{margin:0;background:#111;color:#eee;font:15px/1.5 system-ui}
-    header,footer{padding:12px 16px;background:#222}
-    .wrap{max-width:980px;margin:0 auto;padding:16px}
-    .toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
-    button,input[type=file]{background:#444;border:1px solid #666;color:#eee;
-      padding:10px 14px;border-radius:6px;cursor:pointer;font-size:14px}
-    button:hover{background:#555}
-    #gameHost{width:100%;max-width:960px;aspect-ratio:4/3;background:#000;
-      margin:12px auto;border-radius:8px;overflow:hidden;border:1px solid #333}
-    #game{width:100%;height:100%}
-    .info{margin-top:20px;background:#1a1a1a;padding:12px;border-radius:8px}
-    code{background:#333;padding:2px 5px;border-radius:4px}
+    body {
+      margin: 0;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right)
+               env(safe-area-inset-bottom) env(safe-area-inset-left);
+      background: #111;
+      color: #eee;
+      font: 15px/1.5 system-ui;
+    }
+    header,footer { padding:12px 16px; background:#222 }
+    .wrap { max-width:980px; margin:0 auto; padding:16px }
+    .toolbar { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px }
+    button,input[type=file] {
+      background:#444; border:1px solid #666; color:#eee;
+      padding:10px 14px; border-radius:6px; cursor:pointer; font-size:14px
+    }
+    button:hover { background:#555 }
+    #gameHost {
+      width: 100vw;
+      height: calc(100vh - 140px); /* espaço para botões */
+      max-width: 100%;
+      margin: 0 auto;
+      background:#000;
+      border-radius:8px;
+      overflow:hidden;
+      border:1px solid #333;
+    }
+    #game { width:100%; height:100% }
+    .info { margin-top:20px; background:#1a1a1a; padding:12px; border-radius:8px }
+    code { background:#333; padding:2px 5px; border-radius:4px }
     @media (max-width:768px){
       .toolbar{flex-direction:column}
       button,input[type=file]{width:100%}
-      #gameHost{max-width:100%}
     }
   </style>
 </head>
@@ -80,17 +96,32 @@
     }
     startEmu();
 
-    // Alerta para girar o celular se estiver em retrato
+    // Alerta para celular em modo retrato
     if(window.innerHeight > window.innerWidth){
       alert("📱 Dica: gire o celular para horizontal para jogar melhor!");
     }
 
-    // Tenta carregar default.state
+    // Helpers para base64 seguro
+    function u8ToB64(u8){
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.readAsDataURL(new Blob([u8]));
+      });
+    }
+    function b64ToU8(b64){
+      const bin = atob(b64);
+      const arr = new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+      return arr;
+    }
+
+    // Carregar default.state se existir
     async function loadDefaultState(){
       try {
         const resp = await fetch("default.state", { cache: "no-store" });
         if (!resp.ok) {
-          alert("❌ Arquivo default.state não encontrado (HTTP " + resp.status + ")");
+          alert("❌ default.state não encontrado (HTTP " + resp.status + ")");
           return;
         }
         const buf = new Uint8Array(await resp.arrayBuffer());
@@ -110,7 +141,7 @@
         };
         apply();
       } catch (e) {
-        alert("❌ Erro de rede ao buscar default.state. Abra pelo servidor (python -m http.server).");
+        alert("❌ Erro de rede ao buscar default.state. Use um servidor HTTP (ex.: python -m http.server).");
       }
     }
     setTimeout(loadDefaultState, 4000);
@@ -127,7 +158,7 @@
       setTimeout(loadDefaultState, 3000);
     });
 
-    // Botões de controle
+    // Botões
     document.getElementById("btnPause").onclick = () => {
       const emu = window.EJS_emulator;
       if (!emu) return;
@@ -138,27 +169,29 @@
       document.fullscreenElement ? document.exitFullscreen() : host.requestFullscreen().catch(()=>{});
     };
 
-    // Save localStorage
-    document.getElementById("btnSave").onclick = () => {
+    // Salvar no navegador
+    document.getElementById("btnSave").onclick = async () => {
       const gm = window.EJS_emulator?.gameManager;
       if (!gm?.getState) return alert("Jogo não iniciado");
       try {
         const state = gm.getState();
-        localStorage.setItem(LS_KEY, btoa(String.fromCharCode(...state)));
+        const b64 = await u8ToB64(state);
+        localStorage.setItem(LS_KEY, b64);
         alert("✅ Save gravado no navegador!");
-      } catch(e){ alert("Erro ao salvar"); }
+      } catch(e){ console.error(e); alert("Erro ao salvar"); }
     };
 
+    // Carregar do navegador
     document.getElementById("btnLoad").onclick = () => {
       const gm = window.EJS_emulator?.gameManager;
       if (!gm) return alert("Jogo não iniciado");
       const b64 = localStorage.getItem(LS_KEY);
       if (!b64) return alert("Nenhum save encontrado no navegador");
-      const u8 = new Uint8Array(atob(b64).split("").map(c=>c.charCodeAt(0)));
       try {
+        const u8 = b64ToU8(b64);
         gm.setState ? gm.setState(u8) : gm.loadState(u8);
         alert("📂 Save carregado do navegador!");
-      } catch(e){ alert("Erro ao carregar"); }
+      } catch(e){ console.error(e); alert("Erro ao carregar"); }
     };
 
     // Exportar/importar
