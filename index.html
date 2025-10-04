@@ -78,11 +78,11 @@
         <li>Atalhos: <code>F</code> (tela cheia), <code>P</code> (pausar)</li>
       </ul>
       <p>📱 No celular aparecem controles virtuais (toque).  
-      ⚠️ Se existir <code>default.state</code>, ele é carregado automaticamente.</p>
+      ⚠️ Se existir <code>default.state</code>, ele será tentado automaticamente, mas ignorado se falhar.</p>
     </div>
   </main>
 
-  <footer><div class="wrap">ROM padrão: <code>smw.sfc</code> • Save inicial: <code>default.state</code></div></footer>
+  <footer><div class="wrap">ROM padrão: <code>smw.sfc</code> • Save opcional: <code>default.state</code></div></footer>
 
   <script>
     // Configuração base
@@ -101,17 +101,38 @@
       document.body.appendChild(s);
     }
 
-    // Mostra botão Jogar em tela cheia no celular
+    async function loadDefaultState(){
+      try {
+        const resp = await fetch("default.state", { cache: "no-store" });
+        if (!resp.ok) return; // se não existir, ignora
+        const buf = new Uint8Array(await resp.arrayBuffer());
+        if (!buf.length) return; // se vazio, ignora
+        const apply = () => {
+          const gm = window.EJS_emulator?.gameManager;
+          if (!gm) return setTimeout(apply, 400);
+          try { gm.setState ? gm.setState(buf) : gm.loadState(buf); }
+          catch (e) { console.warn("Save incompatível, ignorado."); }
+        };
+        apply();
+      } catch (e) {
+        console.warn("Erro ao tentar carregar default.state, ignorado.");
+      }
+    }
+
+    // Auto-start ao abrir a página
+    window.addEventListener("DOMContentLoaded", () => {
+      startEmu();
+      setTimeout(loadDefaultState, 3000);
+    });
+
+    // Botão tela cheia (mobile)
     if(window.innerHeight > window.innerWidth){
       document.getElementById("playBtn").style.display = "block";
     }
     document.getElementById("playBtn").onclick = async () => {
       const host = document.getElementById("gameHost");
       if (host.requestFullscreen) await host.requestFullscreen();
-      else if (host.webkitRequestFullscreen) await host.webkitRequestFullscreen(); // iOS Safari
-      startEmu();
-      setTimeout(loadDefaultState, 3000);
-      document.getElementById("playBtn").style.display = "none";
+      else if (host.webkitRequestFullscreen) await host.webkitRequestFullscreen();
     };
 
     // Helpers para salvar/carregar no navegador
@@ -127,23 +148,6 @@
       const arr = new Uint8Array(bin.length);
       for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
       return arr;
-    }
-
-    // Carregar default.state
-    async function loadDefaultState(){
-      try {
-        const resp = await fetch("default.state", { cache: "no-store" });
-        if (!resp.ok) return;
-        const buf = new Uint8Array(await resp.arrayBuffer());
-        if (!buf.length) return;
-        const apply = () => {
-          const gm = window.EJS_emulator?.gameManager;
-          if (!gm) return setTimeout(apply, 400);
-          try { gm.setState ? gm.setState(buf) : gm.loadState(buf); }
-          catch (e) { console.warn("Erro default.state", e); }
-        };
-        apply();
-      } catch (e) { console.warn("Erro rede default.state", e); }
     }
 
     // Upload manual de ROM
