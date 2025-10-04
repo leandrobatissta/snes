@@ -16,7 +16,7 @@
     }
     header,footer { padding:12px 16px; background:#222 }
     .wrap { max-width:980px; margin:0 auto; padding:16px }
-    .toolbar { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px }
+    .toolbar { display:flex; flex-wrap:wrap; gap:10px; margin:20px 0 }
     button,input[type=file] {
       background:#444; border:1px solid #666; color:#eee;
       padding:10px 14px; border-radius:6px; cursor:pointer; font-size:16px
@@ -24,7 +24,7 @@
     button:hover { background:#555 }
     #gameHost {
       width: 100vw;
-      height: calc(100vh - 160px);
+      height: calc(100vh - 260px); /* altura maior para deixar espaço pros botões */
       max-width: 100%;
       margin: 0 auto;
       background:#000;
@@ -33,9 +33,6 @@
       border:1px solid #333;
     }
     #game { width:100%; height:100% }
-    #playBtn {
-      font-size:20px; padding:14px 28px; margin:20px auto; display:none;
-    }
     .info { margin-top:20px; background:#1a1a1a; padding:12px; border-radius:8px; text-align:left }
     code { background:#333; padding:2px 5px; border-radius:4px }
     @media (max-width:768px){
@@ -50,8 +47,10 @@
   </header>
 
   <main class="wrap">
-    <button id="playBtn">▶️ Jogar em Tela Cheia</button>
+    <!-- Tela do jogo -->
+    <div id="gameHost"><div id="game"></div></div>
 
+    <!-- Barra de botões abaixo -->
     <div class="toolbar">
       <label>
         <input id="romInput" type="file" accept=".smc,.sfc,.zip,.7z" />
@@ -67,10 +66,7 @@
       <button id="btnFullscreen">⛶ Tela cheia</button>
     </div>
 
-    <!-- Tela do jogo -->
-    <div id="gameHost"><div id="game"></div></div>
-
-    <!-- Instruções abaixo -->
+    <!-- Instruções abaixo da barra -->
     <div class="info">
       <h3>🎮 Controles</h3>
       <ul>
@@ -81,7 +77,7 @@
         <li>Atalhos: <code>F</code> (tela cheia), <code>P</code> (pausar)</li>
       </ul>
       <p>📱 No celular aparecem controles virtuais (toque).  
-      ⚡ Agora também há um botão de <b>Save rápido</b> no celular e quando um controle estiver conectado.</p>
+      ⚡ Botão de <b>Save rápido</b> aparece no celular e também quando um controle for conectado.</p>
     </div>
   </main>
 
@@ -138,16 +134,6 @@
       document.getElementById("btnQuickSave").style.display = "inline-block";
     });
 
-    // Botão tela cheia (mobile)
-    if(window.innerHeight > window.innerWidth){
-      document.getElementById("playBtn").style.display = "block";
-    }
-    document.getElementById("playBtn").onclick = async () => {
-      const host = document.getElementById("gameHost");
-      if (host.requestFullscreen) await host.requestFullscreen();
-      else if (host.webkitRequestFullscreen) await host.webkitRequestFullscreen();
-    };
-
     // Helpers
     function u8ToB64(u8){
       return new Promise((resolve) => {
@@ -175,7 +161,7 @@
       setTimeout(loadDefaultState, 3000);
     });
 
-    // Botões básicos
+    // Botões
     document.getElementById("btnPause").onclick = () => {
       const emu = window.EJS_emulator;
       if (!emu) return;
@@ -215,7 +201,6 @@
       const state = gm.getState();
       const b64 = await u8ToB64(state);
       localStorage.setItem(LS_KEY, b64);
-      console.log("⚡ Save rápido feito!");
       alert("⚡ Save rápido gravado!");
     };
 
