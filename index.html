@@ -23,10 +23,10 @@
     }
     button:hover { background:#555 }
     #gameHost {
-      width: 100vw;
-      height: calc(100vh - 260px); /* altura maior para deixar espaço pros botões */
-      max-width: 100%;
-      margin: 0 auto;
+      width: 90vw;
+      max-width: 800px;        /* centralizado, máximo 800px */
+      aspect-ratio: 4 / 3;     /* mantém proporção SNES */
+      margin: 20px auto;       /* centraliza */
       background:#000;
       border-radius:8px;
       overflow:hidden;
@@ -43,7 +43,7 @@
 </head>
 <body>
   <header>
-    <div class="wrap"><strong>SNES Web – Super Mario World</strong></div>
+    <div class="wrap"><strong>SNES Web – Super Mario All Star</strong></div>
   </header>
 
   <main class="wrap">
@@ -77,7 +77,8 @@
         <li>Atalhos: <code>F</code> (tela cheia), <code>P</code> (pausar)</li>
       </ul>
       <p>📱 No celular aparecem controles virtuais (toque).  
-      ⚡ Botão de <b>Save rápido</b> aparece no celular e também quando um controle for conectado.</p>
+      ⚡ Botão de <b>Save rápido</b> aparece no celular e também quando um controle for conectado.  
+      📺 Em Smart TVs, setas + <code>Enter</code> do controle remoto funcionam para menu/Start.</p>
     </div>
   </main>
 
@@ -89,7 +90,7 @@
     window.EJS_core = "snes";
     window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
     window.EJS_gameUrl = "smw.sfc";
-    window.EJS_gameName = "Super Mario World";
+    window.EJS_gameName = "Super Mario All Star";
     window.EJS_mobileControls = true;
 
     const LS_KEY = "snes_web_slot0_state";
@@ -118,20 +119,36 @@
       }
     }
 
-    // Auto-start ao abrir a página
+    // Auto-start
     window.addEventListener("DOMContentLoaded", () => {
       startEmu();
       setTimeout(loadDefaultState, 3000);
 
-      // Ativar botão de save rápido no celular
       if (/Mobi|Android/i.test(navigator.userAgent)) {
         document.getElementById("btnQuickSave").style.display = "inline-block";
       }
     });
 
-    // Detectar controle conectado (Gamepad API)
-    window.addEventListener("gamepadconnected", () => {
+    // Gamepad API
+    window.addEventListener("gamepadconnected", (e) => {
       document.getElementById("btnQuickSave").style.display = "inline-block";
+      alert("🎮 Controle conectado: " + e.gamepad.id);
+    });
+
+    // Mapeamento básico do controle remoto da TV
+    document.addEventListener("keydown", (e) => {
+      const emu = window.EJS_emulator;
+      if (!emu) return;
+      const gm = emu.keyboard;
+      if (!gm) return;
+
+      switch(e.code){
+        case "ArrowUp": gm.keyDown({keyCode:38}); break;
+        case "ArrowDown": gm.keyDown({keyCode:40}); break;
+        case "ArrowLeft": gm.keyDown({keyCode:37}); break;
+        case "ArrowRight": gm.keyDown({keyCode:39}); break;
+        case "Enter": gm.keyDown({keyCode:13}); break; // Start
+      }
     });
 
     // Helpers
@@ -149,7 +166,7 @@
       return arr;
     }
 
-    // Upload manual de ROM
+    // Upload manual
     document.getElementById("romInput").addEventListener("change", async (ev) => {
       const file = ev.target.files?.[0];
       if (!file) return;
@@ -173,7 +190,6 @@
       else if (host.webkitRequestFullscreen) host.webkitRequestFullscreen();
     };
 
-    // Save normal
     document.getElementById("btnSave").onclick = async () => {
       const gm = window.EJS_emulator?.gameManager;
       if (!gm?.getState) return alert("Jogo não iniciado");
@@ -183,7 +199,6 @@
       alert("✅ Save gravado no navegador!");
     };
 
-    // Load normal
     document.getElementById("btnLoad").onclick = () => {
       const gm = window.EJS_emulator?.gameManager;
       if (!gm) return alert("Jogo não iniciado");
@@ -194,7 +209,6 @@
       alert("📂 Save carregado do navegador!");
     };
 
-    // Save rápido (instantâneo)
     document.getElementById("btnQuickSave").onclick = async () => {
       const gm = window.EJS_emulator?.gameManager;
       if (!gm?.getState) return alert("Jogo não iniciado");
@@ -204,7 +218,6 @@
       alert("⚡ Save rápido gravado!");
     };
 
-    // Exportar/importar
     document.getElementById("btnExport").onclick = () => {
       const gm = window.EJS_emulator?.gameManager;
       if (!gm?.getState) return alert("Jogo não iniciado");
