@@ -59,6 +59,7 @@
       </label>
       <button id="btnSave">💾 Salvar (navegador)</button>
       <button id="btnLoad">📂 Carregar (navegador)</button>
+      <button id="btnQuickSave" style="display:none">⚡ Save rápido</button>
       <button id="btnExport">⬇️ Exportar Save</button>
       <button id="btnImport">⬆️ Importar Save</button>
       <input id="stateInput" type="file" accept=".state" style="display:none" />
@@ -66,8 +67,10 @@
       <button id="btnFullscreen">⛶ Tela cheia</button>
     </div>
 
+    <!-- Tela do jogo -->
     <div id="gameHost"><div id="game"></div></div>
 
+    <!-- Instruções abaixo -->
     <div class="info">
       <h3>🎮 Controles</h3>
       <ul>
@@ -78,7 +81,7 @@
         <li>Atalhos: <code>F</code> (tela cheia), <code>P</code> (pausar)</li>
       </ul>
       <p>📱 No celular aparecem controles virtuais (toque).  
-      ⚠️ Se existir <code>default.state</code>, ele será tentado automaticamente, mas ignorado se falhar.</p>
+      ⚡ Agora também há um botão de <b>Save rápido</b> no celular e quando um controle estiver conectado.</p>
     </div>
   </main>
 
@@ -104,9 +107,9 @@
     async function loadDefaultState(){
       try {
         const resp = await fetch("default.state", { cache: "no-store" });
-        if (!resp.ok) return; // se não existir, ignora
+        if (!resp.ok) return;
         const buf = new Uint8Array(await resp.arrayBuffer());
-        if (!buf.length) return; // se vazio, ignora
+        if (!buf.length) return;
         const apply = () => {
           const gm = window.EJS_emulator?.gameManager;
           if (!gm) return setTimeout(apply, 400);
@@ -123,6 +126,16 @@
     window.addEventListener("DOMContentLoaded", () => {
       startEmu();
       setTimeout(loadDefaultState, 3000);
+
+      // Ativar botão de save rápido no celular
+      if (/Mobi|Android/i.test(navigator.userAgent)) {
+        document.getElementById("btnQuickSave").style.display = "inline-block";
+      }
+    });
+
+    // Detectar controle conectado (Gamepad API)
+    window.addEventListener("gamepadconnected", () => {
+      document.getElementById("btnQuickSave").style.display = "inline-block";
     });
 
     // Botão tela cheia (mobile)
@@ -135,7 +148,7 @@
       else if (host.webkitRequestFullscreen) await host.webkitRequestFullscreen();
     };
 
-    // Helpers para salvar/carregar no navegador
+    // Helpers
     function u8ToB64(u8){
       return new Promise((resolve) => {
         const reader = new FileReader();
@@ -174,7 +187,7 @@
       else if (host.webkitRequestFullscreen) host.webkitRequestFullscreen();
     };
 
-    // Salvar no navegador
+    // Save normal
     document.getElementById("btnSave").onclick = async () => {
       const gm = window.EJS_emulator?.gameManager;
       if (!gm?.getState) return alert("Jogo não iniciado");
@@ -184,7 +197,7 @@
       alert("✅ Save gravado no navegador!");
     };
 
-    // Carregar do navegador
+    // Load normal
     document.getElementById("btnLoad").onclick = () => {
       const gm = window.EJS_emulator?.gameManager;
       if (!gm) return alert("Jogo não iniciado");
@@ -193,6 +206,17 @@
       const u8 = b64ToU8(b64);
       gm.setState ? gm.setState(u8) : gm.loadState(u8);
       alert("📂 Save carregado do navegador!");
+    };
+
+    // Save rápido (instantâneo)
+    document.getElementById("btnQuickSave").onclick = async () => {
+      const gm = window.EJS_emulator?.gameManager;
+      if (!gm?.getState) return alert("Jogo não iniciado");
+      const state = gm.getState();
+      const b64 = await u8ToB64(state);
+      localStorage.setItem(LS_KEY, b64);
+      console.log("⚡ Save rápido feito!");
+      alert("⚡ Save rápido gravado!");
     };
 
     // Exportar/importar
